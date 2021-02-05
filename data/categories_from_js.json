@@ -1,0 +1,249 @@
+[
+    {
+        "name": "Футбол",
+        "url": "/category/football",
+        "title": "Раздел футбола от ProstoProSport",
+        "child": [
+            {
+                "name": "Россия",
+                "url": "/category/football/russia",
+                "title": "Раздел футбол России от ProstoProSport",
+                "child": [
+                    {
+                        "name": "РПЛ",
+                        "url": "/category/football/russia/rpl",
+                        "title": "Все об РПЛ от ProstoProSport",
+                        "child": []
+                    }
+                ]
+            },
+            {
+                "name": "Англия",
+                "url": "/category/football/england",
+                "title": "Раздел футбол Англии от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Испания",
+                "url": "/category/football/spain",
+                "title": "Раздел футбол Испании от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Франция",
+                "url": "/category/football/france",
+                "title": "Раздел футбол Франции от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Германия",
+                "url": "/category/football/germany",
+                "title": "Раздел футбол Германии от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Лига Европы",
+                "url": "/category/football/league-europe",
+                "title": "Раздел Лига Европы от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Лига Наций",
+                "url": "/category/football/league-of-nations",
+                "title": "Раздел Лига Наций от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Лига Чемпионов",
+                "url": "/category/football/champions-league",
+                "title": "Раздел Лига Наций от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Чемпионат Мира",
+                "url": "/category/football/fifa-worldcup",
+                "title": "Раздел Чемпионат Мира от ProstoProSport",
+                "child": []
+            }
+        ]
+    },
+    {
+        "name": "Хоккей",
+        "url": "/category/hockey",
+        "title": "Раздел хоккей от ProstoProSport",
+        "child": [
+            {
+                "name": "NHL",
+                "url": "/category/hockey/nhl",
+                "title": "Раздел NHL от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "ЧМ по хоккею",
+                "url": "/category/hockey/ice-hockey-world-championship",
+                "title": "Раздел ЧМ по хоккею от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "МЧМ",
+                "url": "/category/hockey/mchm",
+                "title": "Раздел ЧМ по хоккею от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "МЧМ",
+                "url": "/category/hockey/ice-hockey-world-championship",
+                "title": "Раздел ЧМ по хоккею от ProstoProSport",
+                "child": []
+            }
+        ]
+    },
+    {
+        "name": "Теннис",
+        "url": "/category/tennis",
+        "title": "Раздел хоккей от ProstoProSport",
+        "child": [
+            {
+                "name": "Уимблдон",
+                "url": "/category/tennis/wimbledon",
+                "title": "Раздел Уимблдон от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "ATP",
+                "url": "/category/tennis/atp",
+                "title": "Раздел ATP от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Australlian Open",
+                "url": "/category/tennis/australlian-open",
+                "title": "Раздел Australlian Open от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "US OPEN",
+                "url": "/category/tennis/us-open",
+                "title": "Раздел US OPEN от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "WTA",
+                "url": "/category/tennis/wta",
+                "title": "Раздел WTA от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Ролан Гаррос",
+                "url": "/category/tennis/roland-garros",
+                "title": "Раздел Ролан Гаррос от ProstoProSport",
+                "child": []
+            }
+        ]
+    },
+    {
+        "name": "Баскетбол",
+        "url": "/category/basketball",
+        "title": "Раздел Баскетбол от ProstoProSport",
+        "child": [
+            {
+                "name": "NBA",
+                "url": "/category/basketball/nba",
+                "title": "Раздел NBA от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Евробаскет",
+                "url": "/category/basketball/evrobasket",
+                "title": "Раздел Евробаскет от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Еврокубок",
+                "url": "/category/basketball/basket-eurocup",
+                "title": "Раздел Еврокубок от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Евролига",
+                "url": "/category/basketball/euroleague",
+                "title": "Раздел Евролига от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Единая Лига ВТБ",
+                "url": "/category/basketball/league-vtb",
+                "title": "Раздел Единая Лига ВТБ от ProstoProSport",
+                "child": []
+            }
+        ]
+    },
+    {
+        "name": "Бокс/ММА",
+        "url": "/category/box-mma",
+        "title": "Раздел Бокс/ММА от ProstoProSport",
+        "child": [
+            {
+                "name": "MMA",
+                "url": "/category/box-mma/mma",
+                "title": "Раздел MMA от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Бокс",
+                "url": "/category/box-mma/boxing",
+                "title": "Раздел Бокс от ProstoProSport",
+                "child": []
+            }
+        ]
+    },
+    {
+        "name": "Фигурное катание",
+        "url": "/category/figure-skating",
+        "title": "Раздел Фигурное катание от ProstoProSport",
+        "child": [
+            {
+                "name": "Чемпионат Европы по ФК",
+                "url": "/category/figure-skating/european-championship",
+                "title": "Раздел Чемпионат Европы по ФК от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Чемпионат Мира по ФК",
+                "url": "/category/figure-skating/world-figure-skating-championships",
+                "title": "Раздел Чемпионат Мира по ФК от ProstoProSport",
+                "child": []
+            },
+            {
+                "name": "Чемпионат России по ФК",
+                "url": "/category/figure-skating/championship-russia",
+                "title": "Раздел Чемпионат России по ФК от ProstoProSport",
+                "child": []
+            }
+        ]
+    },
+    {
+        "name": "Биатлон",
+        "url": "/category/biathlon",
+        "title": "Раздел Биатлон от ProstoProSport",
+        "child": []
+    },
+    {
+        "name": "Киберспорт",
+        "url": "/category/cybersport",
+        "title": "Раздел Киберспорт от ProstoProSport",
+        "child": []
+    },
+    {
+        "name": "Лыжи",
+        "url": "/category/skiing",
+        "title": "Раздел Лыжи от ProstoProSport",
+        "child": []
+    },
+    {
+        "name": "Другое",
+        "url": "/category/other",
+        "title": "Раздел Другое от ProstoProSport",
+        "child": []
+    }
+]
