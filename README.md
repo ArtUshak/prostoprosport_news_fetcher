@@ -68,6 +68,12 @@ Build categories list file. It will contain data about base URL for each categor
 * `--input-bonus-file-name FILE` — JSON file with additional data, default is `data/categories_bonus.json`
 * `--output-file-name FILE` — output JSON file, default is `data/categories.json`
 
+#### Example
+
+```sh
+python news_fetcher/prostoprosport_news_fetcher.py process-categories
+```
+
 ### Command `fetch-news`
 
 Fetch news for page range and write data to JSON file. Pages are numbered from most recent (1) to least recent.
@@ -78,13 +84,25 @@ Fetch news for page range and write data to JSON file. Pages are numbered from m
 * `--last-page INTEGER` — number of last page to load, should not be less than 1. If it is less than first page number, no data will be fetched
 * `--categories-file-name` — file to read categories URL from (this file can be generated using `process-categories` command)
 * `--output-file` — output JSON file
+* `--check-url` / `--no-check-url` — check URLs using HEAD requests
+
+#### Output file format
+
+JSON array of news items. Each news item is dictionary with following fields:
+
+* `name` — news item ID
+* `title` — news item title
+* `category_slug` — category slug (ID)
+* `date` — date and time in ISO format
+* `url` — news item URL or `null` URL can not be determined by script
+* `url_ok` — only if `--check-url` flag was set: boolean value — `true` if HEAD request was successful, `false` if it was unsuccessful (for example, 404)
 
 #### Example 1
 
 Fetch most recent page (1) and check URLs, write output to file `output1_check.json`:
 
 ```sh
-python ./news_fetcher/prostoprosport_news_fetcher.py fetch-news --output-file=output1_check.json --check-url
+python news_fetcher/prostoprosport_news_fetcher.py fetch-news --output-file=output1_check.json --check-url
 ```
 
 File `output1_check.json` will contain something like this:
@@ -195,7 +213,7 @@ File `output1_check.json` will contain something like this:
 Fetch pages 5 most recent pages (5 to 1) and write output to `output1_5.json`:
 
 ```sh
-python ./news_fetcher/prostoprosport_news_fetcher.py fetch-news --last-page 5 --output-file output1_5.json
+python news_fetcher/prostoprosport_news_fetcher.py fetch-news --last-page 5 --output-file output1_5.json
 ```
 
 #### Example 3
@@ -203,5 +221,9 @@ python ./news_fetcher/prostoprosport_news_fetcher.py fetch-news --last-page 5 --
 Fetch pages 11 to 20 and write output to `output11_20.json`:
 
 ```sh
-python ./news_fetcher/prostoprosport_news_fetcher.py fetch-news --first-page 11 --last-page 20 --output-file output11_20.json
+python news_fetcher/prostoprosport_news_fetcher.py fetch-news --first-page 11 --last-page 20 --output-file output11_20.json
 ```
+
+## Notes
+
+* Prostoprosport.ru API does not provide URLs, only category slugs, category-to-URL mappings are grabbed partially from JavaScript on website, partially discovered manually by script developer. Therefore URLs are not guaranteed to be correct. You can use `--check-url` flag to check whether those URLs actually exist on website.
