@@ -9,13 +9,42 @@ import click
 import requests
 
 PROSTOPROSPORT_API_NEWS_URL = 'https://api.prostoprosport.ru/api/main_news/'
-PRSOTPROSPORT_WEBSITE_URL = 'https://prostoprosport.ru'
+PROSTOPROSPORT_WEBSITE_URL = 'https://prostoprosport.ru'
 
 
-@click.group()
-def cli() -> None:
-    """Command line."""
-    pass
+def check_str(data: Any) -> str:
+    """Check if data is `str` and return it."""
+    if not isinstance(data, str):
+        raise TypeError(data)
+    return data
+
+
+def check_optional_str(data: Any) -> Optional[str]:
+    """Check if data is `Optional[str]` and return it."""
+    if data is None:
+        return None
+    if not isinstance(data, str):
+        raise TypeError(data)
+    return data
+
+
+def check_bool(data: Any) -> bool:
+    """Check if data is `bool` and return it."""
+    if not isinstance(data, bool):
+        raise TypeError(data)
+    return data
+
+
+def check_dict_str_str(data: Any) -> Dict[str, str]:
+    """Check if data is `Dict[str, str]` and return it."""
+    if not isinstance(data, dict):
+        raise TypeError(data)
+    for key, value in data.items():
+        if not isinstance(key, str):
+            raise TypeError(key)
+        if not isinstance(value, str):
+            raise TypeError(value)
+    return data
 
 
 @dataclasses.dataclass
@@ -26,27 +55,91 @@ class NewsItem:
     title: str
     category_slug: str
     date: datetime.datetime
+    url: Optional[str]
+    url_ok: Optional[bool] = None
+
+    @staticmethod
+    def initialize(
+        name: str, title: str, category_slug: str,
+        date: datetime.datetime, categories: Dict[str, str]
+    ) -> 'NewsItem':
+        """Create news item data."""
+        result = NewsItem(name, title, category_slug, date, None, None)
+        result.get_page_url(categories)
+        return result
 
     def get_page_url(self, categories: Dict[str, str]) -> Optional[str]:
         """Return page URL on website using categories URL dictionary."""
         if self.category_slug not in categories:
             return None
         category_url = categories[self.category_slug]
-        return (
-            f'{PRSOTPROSPORT_WEBSITE_URL}/{category_url}/{self.name}'
+        self.url = (
+            f'{PROSTOPROSPORT_WEBSITE_URL}/{category_url}/{self.name}'
         )
+        return self.url
+
+    def check_url(self, session: requests.Session) -> Optional[bool]:
+        """
+        Check if URL is valid, return result and save it.
+
+        Result is `None` if URL is undefined, `True` if URL is correct
+        (HEAD request returns 200), `False` otherwise.
+        """
+        if self.url is not None:
+            url_ok: bool = True
+            try:
+                r1 = session.head(self.url)
+            except requests.exceptions.RequestException:
+                url_ok = False
+            else:
+                if r1.status_code != 200:
+                    url_ok = False
+            self.url_ok = url_ok
+        self.url_ok = None
+        return self.url_ok
 
     def to_json_dict(self) -> Dict[str, Union[bool, Optional[str]]]:
         """Return dictionary to save to JSON."""
-        return {
+        data: Dict[str, Union[bool, Optional[str]]] = {
             'name': self.name,
             'title': self.title,
             'category_slug': self.category_slug,
-            'date': self.date.isoformat()
+            'date': self.date.isoformat(),
+            'url': self.url
         }
+        if self.url_ok is not None:
+            data['url_ok'] = self.url_ok
+        return data
+
+    @staticmethod
+    def from_json_dict(
+        data: Any
+    ) -> 'NewsItem':
+        """Create news item from dictionary loaded from JSON."""
+        if not isinstance(data, dict):
+            raise TypeError(data)
+        name = check_str(data['name'])
+        title = check_str(data['title'])
+        category_slug = check_str(data['category_slug'])
+        date_str = check_str(data['date'])
+        date = datetime.datetime.fromisoformat(date_str)
+        url = check_optional_str(data['url'])
+        url_ok: Optional[bool] = None
+        if 'url_ok' in data:
+            url_ok = check_bool(data['url_ok'])
+        return NewsItem(name, title, category_slug, date, url, url_ok)
 
 
-def iterate_news(session: requests.Session, page: int) -> Iterable[NewsItem]:
+def get_news_items(data: Any) -> Iterable[NewsItem]:
+    """Load news items from data and iterate over them."""
+    if not isinstance(data, Iterable):
+        raise TypeError(data)
+    return map(NewsItem.from_json_dict, data)
+
+
+def iterate_news(
+    session: requests.Session, page: int, categories: Dict[str, str]
+) -> Iterable[NewsItem]:
     """Fetch news items using API and iterate over them."""
     params = {
         'offset': 1,
@@ -76,7 +169,9 @@ def iterate_news(session: requests.Session, page: int) -> Iterable[NewsItem]:
                 break
         if category_slug is None:
             raise ValueError()
-        yield NewsItem(name_str, title_str, category_slug, date)
+        yield NewsItem.initialize(
+            name_str, title_str, category_slug, date, categories
+        )
 
 
 def load_category_urls(elements: List[Dict[str, Any]]) -> Iterable[str]:
@@ -89,38 +184,38 @@ def load_category_urls(elements: List[Dict[str, Any]]) -> Iterable[str]:
                 yield url
 
 
+@click.group()
+def cli() -> None:
+    """Command line."""
+    pass
+
+
 @click.command()
 @click.option(
-    '--input-from-js-file-name',
-    type=click.Path(
-        exists=True, file_okay=True, dir_okay=False, readable=True
-    ),
+    '--input-from-js-file',
+    type=click.File(mode='rt'),
     default='data/categories_from_js.json',
     help='JSON file with categories data grabbed from JavaScript'
 )
 @click.option(
-    '--input-bonus-file-name',
-    type=click.Path(
-        exists=True, file_okay=True, dir_okay=False, readable=True
-    ),
+    '--input-bonus-file',
+    type=click.File(mode='rt'),
     default='data/categories_bonus.json',
     help='JSON file with additional data'
 )
 @click.option(
-    '--output-file-name',
-    type=click.Path(file_okay=True, dir_okay=False, writable=True),
+    '--output-file',
+    type=click.File(mode='wt'),
     default='data/categories.json',
     help='Output JSON file'
 )
 def process_categories(
-    input_from_js_file_name: str, input_bonus_file_name: str,
-    output_file_name: str
+    input_from_js_file: TextIO, input_bonus_file: TextIO,
+    output_file: TextIO
 ) -> None:
     """Build categories list from file."""
-    with open(input_from_js_file_name) as input_from_js_file:
-        categories_data_from_js = json.load(input_from_js_file)
-    with open(input_bonus_file_name) as input_bonus_file:
-        categories_data_bonus = json.load(input_bonus_file)
+    categories_data_from_js = json.load(input_from_js_file)
+    categories_data_bonus = json.load(input_bonus_file)
     categories: Dict[str, str] = {}
     for category_url in load_category_urls(categories_data_from_js):
         category_slug = category_url.split('/')[-1]
@@ -128,20 +223,7 @@ def process_categories(
     for category_url in categories_data_bonus:
         category_slug = category_url.split('/')[-1]
         categories[category_slug] = category_url
-    with open(output_file_name, 'wt') as output_file:
-        json.dump(categories, output_file, indent=4)
-
-
-def check_dict_str_str(data: Any) -> Dict[str, str]:
-    """Check if data is `Dict[str, str]` and return it."""
-    if not isinstance(data, dict):
-        raise TypeError(data)
-    for key, value in data.items():
-        if not isinstance(key, str):
-            raise TypeError(key)
-        if not isinstance(value, str):
-            raise TypeError(value)
-    return data
+    json.dump(categories, output_file, indent=4)
 
 
 @click.command()
@@ -154,10 +236,8 @@ def check_dict_str_str(data: Any) -> Dict[str, str]:
     help='Number of last page to load, should be not less than 1'
 )
 @click.option(
-    '--categories-file-name',
-    type=click.Path(
-        exists=True, file_okay=True, dir_okay=False, readable=True
-    ),
+    '--categories-file',
+    type=click.File(mode='rt'),
     default='data/categories.json',
     help='File to read categories URLs from'
 )
@@ -170,7 +250,7 @@ def check_dict_str_str(data: Any) -> Dict[str, str]:
     help='Check URLs using HEAD requests'
 )
 def fetch_news(
-    first_page: int, last_page: int, categories_file_name: str,
+    first_page: int, last_page: int, categories_file: TextIO,
     output_file: TextIO, check_url: bool
 ) -> None:
     """
@@ -179,37 +259,52 @@ def fetch_news(
     Page numbers are from most recent (1) to least recent.
     Results are retrieved from least recent to first recent.
     """
-    with open(categories_file_name) as categories_file:
-        categories_data = json.load(categories_file)
+    categories_data = json.load(categories_file)
 
     categories = check_dict_str_str(categories_data)
 
     session = requests.Session()
-    data: List[Dict[str, Union[bool, Optional[str]]]] = []
-    for page in range(last_page, first_page - 1, -1):
-        for item in reversed(list(iterate_news(session, page))):
-            item_data: Dict[str, Union[bool, Optional[str]]] = (
-                item.to_json_dict()
-            )
-            item_url = item.get_page_url(categories)
-            item_data['url'] = item_url
-            if check_url and (item_url is not None):
-                url_ok: bool = True
-                try:
-                    r1 = session.head(item_url)
-                except requests.exceptions.RequestException:
-                    url_ok = False
-                else:
-                    if r1.status_code != 200:
-                        url_ok = False
-                item_data['url_ok'] = url_ok
-            data.append(item_data)
+    items: List[NewsItem] = []
+    for page in range(first_page, last_page + 1):
+        for item in list(iterate_news(session, page, categories)):
+            items.append(item)
+    items.sort(key=lambda item: item.date)
 
+    data = list(map(lambda item: item.to_json_dict(), items))
     json.dump(data, output_file, ensure_ascii=False, indent=4)
+
+
+@click.command()
+@click.option(
+    '--date', type=click.DateTime(formats=['%Y-%m-%d']),
+    help='Date to filter news by'
+)
+@click.option(
+    '--input-file', default=sys.stdin, type=click.File(mode='rt'),
+    help='Input JSON file'
+)
+@click.option(
+    '--output-file', default=sys.stdout, type=click.File(mode='wt'),
+    help='Output JSON file'
+)
+def filter_fetched_news(
+    date: Optional[datetime.datetime], input_file: TextIO, output_file: TextIO
+) -> None:
+    """Filter fetched news by date."""
+    data = json.load(input_file)
+
+    items: Iterable[NewsItem] = get_news_items(data)
+    if date is not None:
+        date_date = date.date()
+        items = filter(lambda item: item.date.date() == date_date, items)
+
+    items_data = list(map(lambda item: item.to_json_dict(), items))
+    json.dump(items_data, output_file, ensure_ascii=False, indent=4)
 
 
 cli.add_command(process_categories)
 cli.add_command(fetch_news)
+cli.add_command(filter_fetched_news)
 
 
 if __name__ == '__main__':

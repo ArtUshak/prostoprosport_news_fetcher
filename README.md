@@ -64,9 +64,9 @@ Build categories list file. It will contain data about base URL for each categor
 
 #### Options
 
-* `--input-from-js-file-name FILE` — JSON file with categories data grabbed from JavaScript, default is `data/categories_from_js.json`
-* `--input-bonus-file-name FILE` — JSON file with additional data, default is `data/categories_bonus.json`
-* `--output-file-name FILE` — output JSON file, default is `data/categories.json`
+* `--input-from-js-file FILE` — JSON file with categories data grabbed from JavaScript, default is `data/categories_from_js.json`
+* `--input-bonus-file FILE` — JSON file with additional data, default is `data/categories_bonus.json`
+* `--output-file FILE` — output JSON file, default is `data/categories.json`
 
 #### Example
 
@@ -82,7 +82,7 @@ Fetch news for page range and write data to JSON file. Pages are numbered from m
 
 * `--first-page INTEGER` — number of first page to load, should not be less than 1
 * `--last-page INTEGER` — number of last page to load, should not be less than 1. If it is less than first page number, no data will be fetched
-* `--categories-file-name` — file to read categories URL from (this file can be generated using `process-categories` command)
+* `--categories-file` — file to read categories URL from (this file can be generated using `process-categories` command)
 * `--output-file` — output JSON file
 * `--check-url` / `--no-check-url` — check URLs using HEAD requests
 
@@ -222,6 +222,24 @@ Fetch pages 11 to 20 and write output to `output11_20.json`:
 
 ```sh
 python news_fetcher/prostoprosport_news_fetcher.py fetch-news --first-page 11 --last-page 20 --output-file output11_20.json
+```
+
+### Command `filter-fetched-news`
+
+Filter fetched news by date.
+
+#### Options
+
+* `--date [%Y-%m-%d]` date to filter news by
+* `--input-file FILENAME` input JSON file
+* `--output-file FILENAME`output JSON file
+
+#### Example
+
+Write news from `output1_100.json` published on date `2021-01-25` to `output1_100_2021_01_15.json`.
+
+```sh
+python news_fetcher/prostoprosport_news_fetcher.py filter-fetched-news --input-file output1_100.json --output-file output1_100_2021_01_15.json --date 2021-01-15
 ```
 
 ## Notes
