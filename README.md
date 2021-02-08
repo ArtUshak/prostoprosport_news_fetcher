@@ -93,7 +93,8 @@ JSON array of news items. Each news item is dictionary with following fields:
 
 * `name` — news item ID
 * `title` — news item title
-* `category_slug` — category slug (ID)
+* `category_slug` — category slug (text ID)
+* `category_id` — category numberic ID
 * `date` — date and time in ISO format
 * `url` — news item URL or `null` URL can not be determined by script
 * `url_ok` — only if `--check-url` flag was set: boolean value — `true` if HEAD request was successful, `false` if it was unsuccessful (for example, 404)
