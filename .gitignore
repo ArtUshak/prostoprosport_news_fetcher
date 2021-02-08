@@ -96,5 +96,5 @@ ENV/
 
 *.egg-info/
 
-# Generated categories list
-data/categories.json
+# Generated data
+data1

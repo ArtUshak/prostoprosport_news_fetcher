@@ -3,7 +3,7 @@ import dataclasses
 import datetime
 import json
 import sys
-from typing import Any, Dict, Iterable, List, Optional, TextIO, Union
+from typing import Any, Dict, Iterable, List, Optional, TextIO, Tuple, Union
 
 import click
 import requests
@@ -15,6 +15,13 @@ PROSTOPROSPORT_WEBSITE_URL = 'https://prostoprosport.ru'
 def check_str(data: Any) -> str:
     """Check if data is `str` and return it."""
     if not isinstance(data, str):
+        raise TypeError(data)
+    return data
+
+
+def check_int(data: Any) -> int:
+    """Check if data is `int` and return it."""
+    if not isinstance(data, int):
         raise TypeError(data)
     return data
 
@@ -47,12 +54,33 @@ def check_dict_str_str(data: Any) -> Dict[str, str]:
     return data
 
 
+def get_categories(data: Any) -> Tuple[Dict[int, str], Dict[str, str]]:
+    """Get categories_by_slug dictionary from data loaded from JSON."""
+    if not isinstance(data, dict):
+        raise TypeError(data)
+    categories_by_id_data = data['categories_by_id']
+    if not isinstance(categories_by_id_data, dict):
+        raise TypeError(categories_by_id_data)
+    categories_by_id: Dict[int, str] = {}
+    for key, value in categories_by_id_data.items():
+        if not isinstance(key, str):
+            raise TypeError(key)
+        if not isinstance(value, str):
+            raise TypeError(value)
+        categories_by_id[int(key)] = value
+    categories_by_slug: Dict[str, str] = check_dict_str_str(
+        data['categories_by_slug']
+    )
+    return categories_by_id, categories_by_slug
+
+
 @dataclasses.dataclass
 class NewsItem:
     """News item fetched through API."""
 
     name: str
     title: str
+    category_id: int
     category_slug: str
     date: datetime.datetime
     url: Optional[str]
@@ -60,19 +88,33 @@ class NewsItem:
 
     @staticmethod
     def initialize(
-        name: str, title: str, category_slug: str,
-        date: datetime.datetime, categories: Dict[str, str]
+        name: str, title: str, category_id: int, category_slug: str,
+        date: datetime.datetime, categories_by_id: Dict[int, str],
+        categories_by_slug: Dict[str, str]
     ) -> 'NewsItem':
         """Create news item data."""
-        result = NewsItem(name, title, category_slug, date, None, None)
-        result.get_page_url(categories)
+        result = NewsItem(
+            name, title, category_id, category_slug, date, None, None
+        )
+        result.get_page_url(categories_by_id, categories_by_slug)
         return result
 
-    def get_page_url(self, categories: Dict[str, str]) -> Optional[str]:
-        """Return page URL on website using categories URL dictionary."""
-        if self.category_slug not in categories:
-            return None
-        category_url = categories[self.category_slug]
+    def get_page_url(
+        self, categories_by_id: Dict[int, str],
+        categories_by_slug: Dict[str, str]
+    ) -> Optional[str]:
+        """Return page URL on website using URL dictionaries."""
+        category_url: Optional[str] = None
+
+        if self.category_slug in categories_by_slug:
+            category_url = categories_by_slug[self.category_slug]
+        elif self.category_id in categories_by_id:
+            category_color = categories_by_id[self.category_id]
+            if category_color == self.category_slug:
+                category_url = category_color
+            else:
+                category_url = category_color + '/' + self.category_slug
+
         self.url = (
             f'{PROSTOPROSPORT_WEBSITE_URL}/{category_url}/{self.name}'
         )
@@ -95,14 +137,16 @@ class NewsItem:
                 if r1.status_code != 200:
                     url_ok = False
             self.url_ok = url_ok
-        self.url_ok = None
+        else:
+            self.url_ok = None
         return self.url_ok
 
-    def to_json_dict(self) -> Dict[str, Union[bool, Optional[str]]]:
+    def to_json_dict(self) -> Dict[str, Union[bool, str, int, None]]:
         """Return dictionary to save to JSON."""
-        data: Dict[str, Union[bool, Optional[str]]] = {
+        data: Dict[str, Union[bool, str, int, None]] = {
             'name': self.name,
             'title': self.title,
+            'category_id': self.category_id,
             'category_slug': self.category_slug,
             'date': self.date.isoformat(),
             'url': self.url
@@ -121,13 +165,16 @@ class NewsItem:
         name = check_str(data['name'])
         title = check_str(data['title'])
         category_slug = check_str(data['category_slug'])
+        category_id = check_int(data['category_id'])
         date_str = check_str(data['date'])
         date = datetime.datetime.fromisoformat(date_str)
         url = check_optional_str(data['url'])
         url_ok: Optional[bool] = None
         if 'url_ok' in data:
             url_ok = check_bool(data['url_ok'])
-        return NewsItem(name, title, category_slug, date, url, url_ok)
+        return NewsItem(
+            name, title, category_id, category_slug, date, url, url_ok
+        )
 
 
 def get_news_items(data: Any) -> Iterable[NewsItem]:
@@ -138,7 +185,8 @@ def get_news_items(data: Any) -> Iterable[NewsItem]:
 
 
 def iterate_news(
-    session: requests.Session, page: int, categories: Dict[str, str]
+    session: requests.Session, page: int, categories_by_id: Dict[int, str],
+    categories_by_slug: Dict[str, str]
 ) -> Iterable[NewsItem]:
     """Fetch news items using API and iterate over them."""
     params = {
@@ -162,15 +210,20 @@ def iterate_news(
             raise ValueError()
         date = datetime.datetime.fromisoformat(date_str)
         tags = json.loads('[' + tags_str + ']')
+        category_id: Optional[int] = None
         category_slug: Optional[str] = None
         for tag in tags:
             if 'category' in tag:
+                category_id = int(tag['category']['id'])
                 category_slug = tag['category']['slug']
                 break
+        if category_id is None:
+            raise ValueError()
         if category_slug is None:
             raise ValueError()
         yield NewsItem.initialize(
-            name_str, title_str, category_slug, date, categories
+            name_str, title_str, category_id, category_slug, date,
+            categories_by_id, categories_by_slug
         )
 
 
@@ -195,7 +248,7 @@ def cli() -> None:
     '--input-from-js-file',
     type=click.File(mode='rt'),
     default='data/categories_from_js.json',
-    help='JSON file with categories data grabbed from JavaScript'
+    help='JSON file with categories_by_slug data grabbed from JavaScript'
 )
 @click.option(
     '--input-bonus-file',
@@ -204,26 +257,50 @@ def cli() -> None:
     help='JSON file with additional data'
 )
 @click.option(
+    '--input-colors-file',
+    type=click.File(mode='rt'),
+    default='data/category_colors.json',
+    help='JSON file with category color data'
+)
+@click.option(
     '--output-file',
     type=click.File(mode='wt'),
-    default='data/categories.json',
+    default='data1/categories_data.json',
     help='Output JSON file'
 )
 def process_categories(
     input_from_js_file: TextIO, input_bonus_file: TextIO,
-    output_file: TextIO
+    input_colors_file: TextIO, output_file: TextIO,
 ) -> None:
-    """Build categories list from file."""
+    """Build categories_by_slug list from file."""
     categories_data_from_js = json.load(input_from_js_file)
     categories_data_bonus = json.load(input_bonus_file)
-    categories: Dict[str, str] = {}
-    for category_url in load_category_urls(categories_data_from_js):
+    categories_data_colors = json.load(input_colors_file)
+
+    categories_by_slug: Dict[str, str] = {}
+    for category_url_data in load_category_urls(categories_data_from_js):
+        category_url = check_str(category_url_data)
         category_slug = category_url.split('/')[-1]
-        categories[category_slug] = '/'.join(category_url.split('/')[2:])
-    for category_url in categories_data_bonus:
+        categories_by_slug[category_slug] = '/'.join(
+            category_url.split('/')[2:]
+        )
+    for category_url_data in categories_data_bonus:
+        category_url = check_str(category_url_data)
         category_slug = category_url.split('/')[-1]
-        categories[category_slug] = category_url
-    json.dump(categories, output_file, indent=4)
+        categories_by_slug[category_slug] = category_url
+
+    categories_by_id_data: Dict[int, str] = {}
+    for category_color_data, category_ids in categories_data_colors.items():
+        category_color = check_str(category_color_data)
+        for category_id_data in category_ids:
+            category_id = check_int(category_id_data)
+            categories_by_id_data[category_id] = category_color
+
+    data = {
+        'categories_by_id': categories_by_id_data,
+        'categories_by_slug': categories_by_slug
+    }
+    json.dump(data, output_file, indent=4)
 
 
 @click.command()
@@ -238,7 +315,7 @@ def process_categories(
 @click.option(
     '--categories-file',
     type=click.File(mode='rt'),
-    default='data/categories.json',
+    default='data1/categories_data.json',
     help='File to read categories URLs from'
 )
 @click.option(
@@ -250,7 +327,8 @@ def process_categories(
     help='Check URLs using HEAD requests'
 )
 def fetch_news(
-    first_page: int, last_page: int, categories_file: TextIO,
+    first_page: int, last_page: int,
+    categories_file: TextIO,
     output_file: TextIO, check_url: bool
 ) -> None:
     """
@@ -261,14 +339,19 @@ def fetch_news(
     """
     categories_data = json.load(categories_file)
 
-    categories = check_dict_str_str(categories_data)
+    categories_by_id, categories_by_slug = get_categories(categories_data)
 
     session = requests.Session()
     items: List[NewsItem] = []
     for page in range(first_page, last_page + 1):
-        for item in list(iterate_news(session, page, categories)):
+        for item in list(
+            iterate_news(session, page, categories_by_id, categories_by_slug)
+        ):
             items.append(item)
     items.sort(key=lambda item: item.date)
+    if check_url:
+        for item in items:
+            item.check_url(session)
 
     data = list(map(lambda item: item.to_json_dict(), items))
     json.dump(data, output_file, ensure_ascii=False, indent=4)
