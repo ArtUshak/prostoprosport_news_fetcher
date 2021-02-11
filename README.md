@@ -86,6 +86,7 @@ Fetch news for page range and write data to JSON file. Pages are numbered from m
 * `--categories-file` — file to read categories URL from (this file can be generated using `process-categories` command), default is `data1/categories_data.json`
 * `--output-file` — output JSON file
 * `--check-url` / `--no-check-url` — check URLs using HEAD requests
+* `--api-method [main-news|news]` — API method to use: `main_news` or `news`, default is `main_news`
 
 #### Output file format
 

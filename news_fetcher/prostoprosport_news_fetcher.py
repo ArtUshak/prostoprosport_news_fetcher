@@ -8,7 +8,10 @@ from typing import Any, Dict, Iterable, List, Optional, TextIO, Tuple, Union
 import click
 import requests
 
-PROSTOPROSPORT_API_NEWS_URL = 'https://api.prostoprosport.ru/api/main_news/'
+PROSTOPROSPORT_API_NEWS_URL = 'https://api.prostoprosport.ru/api/news/'
+PROSTOPROSPORT_API_MAIN_NEWS_URL = (
+    'https://api.prostoprosport.ru/api/main_news/'
+)
 PROSTOPROSPORT_WEBSITE_URL = 'https://prostoprosport.ru'
 
 
@@ -186,14 +189,14 @@ def get_news_items(data: Any) -> Iterable[NewsItem]:
 
 def iterate_news(
     session: requests.Session, page: int, categories_by_id: Dict[int, str],
-    categories_by_slug: Dict[str, str]
+    categories_by_slug: Dict[str, str], api_url: str
 ) -> Iterable[NewsItem]:
     """Fetch news items using API and iterate over them."""
     params = {
         'offset': 1,
         'page': page
     }
-    r = session.get(PROSTOPROSPORT_API_NEWS_URL, params=params)
+    r = session.get(api_url, params=params)
     data = r.json()
     for element in data:
         title_str = element['post_title']
@@ -326,10 +329,15 @@ def process_categories(
     '--check-url/--no-check-url', default=False,
     help='Check URLs using HEAD requests'
 )
+@click.option(
+    '--api-method', default='main_news',
+    type=click.Choice(['main_news', 'news']),
+    help='API method to use: main_news or news'
+)
 def fetch_news(
     first_page: int, last_page: int,
     categories_file: TextIO,
-    output_file: TextIO, check_url: bool
+    output_file: TextIO, check_url: bool, api_method: str
 ) -> None:
     """
     Fetch news from Prostoprosport.ru using API.
@@ -342,10 +350,17 @@ def fetch_news(
     categories_by_id, categories_by_slug = get_categories(categories_data)
 
     session = requests.Session()
+    api_url: str
+    if api_method == 'news':
+        api_url = PROSTOPROSPORT_API_NEWS_URL
+    else:
+        api_url = PROSTOPROSPORT_API_MAIN_NEWS_URL
     items: List[NewsItem] = []
     for page in range(first_page, last_page + 1):
         for item in list(
-            iterate_news(session, page, categories_by_id, categories_by_slug)
+            iterate_news(
+                session, page, categories_by_id, categories_by_slug, api_url
+            )
         ):
             items.append(item)
     items.sort(key=lambda item: item.date)
