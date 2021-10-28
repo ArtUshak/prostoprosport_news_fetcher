@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "prostoprosport_news_fetcher"
 version = "0.1.0"
-description = "Script to fetch news using RSS and convert to wiki-text"
+description = "Script to fetch news using API and convert to wiki-text"
 authors = ["Artiom Khandamirov <t9max@yandex.ru>"]
 license = "MIT"
 
@@ -9,6 +9,7 @@ license = "MIT"
 python = "^3.8"
 Click = "^7.1.2"
 requests = "^2.25.1"
+beautifulsoup4 = "^4.10.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^3.8.3"

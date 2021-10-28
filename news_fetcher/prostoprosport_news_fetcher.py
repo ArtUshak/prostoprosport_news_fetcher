@@ -2,11 +2,15 @@
 import dataclasses
 import datetime
 import json
+import pathlib
 import sys
 from typing import Any, Dict, Iterable, List, Optional, TextIO, Tuple, Union
 
+import bs4
 import click
 import requests
+
+from utils import html_to_wikitext
 
 PROSTOPROSPORT_API_NEWS_URL = 'https://api.prostoprosport.ru/api/news/'
 PROSTOPROSPORT_API_MAIN_NEWS_URL = (
@@ -57,6 +61,16 @@ def check_dict_str_str(data: Any) -> Dict[str, str]:
     return data
 
 
+def check_list_str(data: Any) -> List[str]:
+    """Check if data is `List[str]` and return it."""
+    if not isinstance(data, list):
+        raise TypeError(data)
+    for value in data:
+        if not isinstance(value, str):
+            raise TypeError(value)
+    return data
+
+
 def get_categories(data: Any) -> Tuple[Dict[int, str], Dict[str, str]]:
     """Get categories_by_slug dictionary from data loaded from JSON."""
     if not isinstance(data, dict):
@@ -85,25 +99,32 @@ class NewsItem:
     title: str
     category_id: int
     category_slug: str
+    category_title: Optional[str]
     date: datetime.datetime
+    tag_titles: List[str]
     url: Optional[str]
     url_ok: Optional[bool] = None
+    wikitext_paragraphs: Optional[List[str]] = None
 
     @staticmethod
     def initialize(
-        name: str, title: str, category_id: int, category_slug: str,
+        name: str, title: str,
+        category_id: int, category_slug: str, category_title: str,
         date: datetime.datetime, categories_by_id: Dict[int, str],
-        categories_by_slug: Dict[str, str]
+        categories_by_slug: Dict[str, str], tag_titles: List[str]
     ) -> 'NewsItem':
         """Create news item data."""
         result = NewsItem(
-            name, title, category_id, category_slug, date, None, None
+            name, title, category_id, category_slug, category_title,
+            date, tag_titles,
+            None, None, None
         )
         result.get_page_url(categories_by_id, categories_by_slug)
         return result
 
     def get_page_url(
-        self, categories_by_id: Dict[int, str],
+        self,
+        categories_by_id: Dict[int, str],
         categories_by_slug: Dict[str, str]
     ) -> Optional[str]:
         """Return page URL on website using URL dictionaries."""
@@ -117,6 +138,8 @@ class NewsItem:
                 category_url = category_color
             else:
                 category_url = category_color + '/' + self.category_slug
+        else:
+            category_url = 'post'
 
         self.url = (
             f'{PROSTOPROSPORT_WEBSITE_URL}/{category_url}/{self.name}'
@@ -144,18 +167,71 @@ class NewsItem:
             self.url_ok = None
         return self.url_ok
 
-    def to_json_dict(self) -> Dict[str, Union[bool, str, int, None]]:
+    def fetch_article_paragraphs(self, session: requests.Session) -> List[str]:
+        """
+        Fetch article text.
+
+        Return it as list of wiki-text paragraphs and save it.
+        """
+        if self.url is None:
+            raise ValueError()
+        r = session.get(self.url)
+        if r.status_code != 200:
+            raise ValueError()
+        parser = bs4.BeautifulSoup(markup=r.text, features='html.parser')
+        paragraphs = parser.select('.page-content > article > p')
+        wikitext_paragraphs: List[str] = []
+        for paragraph in paragraphs:
+            wikitext = html_to_wikitext(paragraph)
+            wikitext_paragraphs.append(wikitext)
+        self.wikitext_paragraphs = wikitext_paragraphs
+        return self.wikitext_paragraphs
+
+    def get_wiki_page_text(self, bot_name: str) -> str:
+        """Get wiki-page text for article from wiki-text paragraphs."""
+        if self.wikitext_paragraphs is None:
+            raise ValueError()
+        wikitext_elements: List[str] = []
+        date_str = self.date.strftime('%Y-%m-%d')
+        tag_titles_list: List[str]
+        if self.category_title is None:
+            full_tag_titles = self.tag_titles
+        else:
+            full_tag_titles = [self.category_title] + self.tag_titles
+        tag_titles_str = '|'.join(full_tag_titles)
+        wikitext_elements.append(f'{{{{дата|{date_str}}}}}')
+        wikitext_elements.append(f'{{{{тема|{tag_titles_str}}}}}')
+        wikitext_elements += self.wikitext_paragraphs
+        wikitext_elements.append('{{-}}')
+        wikitext_elements.append('== Источники ==')
+        wikitext_elements.append(
+            f'{{{{Prostoprosport.ru|url={self.url}|title={self.title}}}}}'
+        )
+        wikitext_elements.append(
+            f'{{{{Загружено ботом в архив|{bot_name}|Prostoprosport.ru}}}}'
+        )
+        wikitext_elements.append('{{Подвал новости}}')
+        wikitext_elements.append(f'{{{{Категории|{tag_titles_str}}}}}')
+        return '\n\n'.join(wikitext_elements)
+
+    def to_json_dict(
+        self
+    ) -> Dict[str, Union[bool, str, int, List[str], None]]:
         """Return dictionary to save to JSON."""
-        data: Dict[str, Union[bool, str, int, None]] = {
+        data: Dict[str, Union[bool, str, int, List[str], None]] = {
             'name': self.name,
             'title': self.title,
             'category_id': self.category_id,
             'category_slug': self.category_slug,
+            'category_title': self.category_title,
             'date': self.date.isoformat(),
-            'url': self.url
+            'url': self.url,
+            'tag_titles': self.tag_titles
         }
         if self.url_ok is not None:
             data['url_ok'] = self.url_ok
+        if self.wikitext_paragraphs is not None:
+            data['wikitext_paragraphs'] = self.wikitext_paragraphs
         return data
 
     @staticmethod
@@ -169,14 +245,24 @@ class NewsItem:
         title = check_str(data['title'])
         category_slug = check_str(data['category_slug'])
         category_id = check_int(data['category_id'])
+        category_title: Optional[str] = None
+        if 'category_title' in data:
+            category_title = data['category_title']
         date_str = check_str(data['date'])
         date = datetime.datetime.fromisoformat(date_str)
         url = check_optional_str(data['url'])
         url_ok: Optional[bool] = None
         if 'url_ok' in data:
             url_ok = check_bool(data['url_ok'])
+        wikitext_paragraphs: Optional[List[str]] = None
+        if 'wikitext_paragraphs' in data:
+            wikitext_paragraphs = check_list_str(data['wikitext_paragraphs'])
+        tag_titles: List[str] = []
+        if 'tag_titles' in data:
+            tag_titles = data['tag_titles']
         return NewsItem(
-            name, title, category_id, category_slug, date, url, url_ok
+            name, title, category_id, category_slug, category_title, date,
+            tag_titles, url, url_ok, wikitext_paragraphs
         )
 
 
@@ -215,18 +301,24 @@ def iterate_news(
         tags = json.loads('[' + tags_str + ']')
         category_id: Optional[int] = None
         category_slug: Optional[str] = None
+        category_title: Optional[str] = None
+        tag_titles: List[str] = []
         for tag in tags:
             if 'category' in tag:
                 category_id = int(tag['category']['id'])
                 category_slug = tag['category']['slug']
-                break
+                category_title = tag['category']['name']
+            elif 'post_tag' in tag:
+                tag_titles.append(tag['post_tag']['name'])
         if category_id is None:
             raise ValueError()
         if category_slug is None:
             raise ValueError()
+        if category_title is None:
+            raise ValueError()
         yield NewsItem.initialize(
-            name_str, title_str, category_id, category_slug, date,
-            categories_by_id, categories_by_slug
+            name_str, title_str, category_id, category_slug, category_title,
+            date, categories_by_id, categories_by_slug, tag_titles
         )
 
 
@@ -318,7 +410,6 @@ def process_categories(
 @click.option(
     '--categories-file',
     type=click.File(mode='rt'),
-    default='data1/categories_data.json',
     help='File to read categories URLs from'
 )
 @click.option(
@@ -336,7 +427,7 @@ def process_categories(
 )
 def fetch_news(
     first_page: int, last_page: int,
-    categories_file: TextIO,
+    categories_file: Optional[TextIO],
     output_file: TextIO, check_url: bool, api_method: str
 ) -> None:
     """
@@ -345,9 +436,14 @@ def fetch_news(
     Page numbers are from most recent (1) to least recent.
     Results are retrieved from least recent to first recent.
     """
-    categories_data = json.load(categories_file)
-
-    categories_by_id, categories_by_slug = get_categories(categories_data)
+    categories_by_id: Dict[int, str]
+    categories_by_slug: Dict[str, str]
+    if categories_file is None:
+        categories_by_id = {}
+        categories_by_slug = {}
+    else:
+        categories_data = json.load(categories_file)
+        categories_by_id, categories_by_slug = get_categories(categories_data)
 
     session = requests.Session()
     api_url: str
@@ -356,17 +452,22 @@ def fetch_news(
     else:
         api_url = PROSTOPROSPORT_API_MAIN_NEWS_URL
     items: List[NewsItem] = []
-    for page in range(first_page, last_page + 1):
-        for item in list(
-            iterate_news(
-                session, page, categories_by_id, categories_by_slug, api_url
-            )
-        ):
-            items.append(item)
+    with click.progressbar(
+        range(first_page, last_page + 1), length=(last_page + 1 - first_page)
+    ) as bar1:
+        for page in bar1:
+            for item in list(
+                iterate_news(
+                    session, page, categories_by_id, categories_by_slug,
+                    api_url
+                )
+            ):
+                items.append(item)
     items.sort(key=lambda item: item.date)
     if check_url:
-        for item in items:
-            item.check_url(session)
+        with click.progressbar(items) as bar2:
+            for item in bar2:
+                item.check_url(session)
 
     data = list(map(lambda item: item.to_json_dict(), items))
     json.dump(data, output_file, ensure_ascii=False, indent=4)
@@ -400,9 +501,75 @@ def filter_fetched_news(
     json.dump(items_data, output_file, ensure_ascii=False, indent=4)
 
 
+@click.command()
+@click.option(
+    '--input-file', default=sys.stdin, type=click.File(mode='rt'),
+    help='Input JSON file'
+)
+@click.option(
+    '--output-file', default=sys.stdout, type=click.File(mode='wt'),
+    help='Output JSON file'
+)
+def fetch_news_pages(
+    input_file: TextIO, output_file: TextIO
+) -> None:
+    """Fetch articles for news."""
+    data = json.load(input_file)
+
+    session = requests.Session()
+    items: List[NewsItem] = list(get_news_items(data))
+    with click.progressbar(items) as bar:
+        for item in bar:
+            item.fetch_article_paragraphs(session)
+
+    items_data = list(map(lambda item: item.to_json_dict(), items))
+    json.dump(items_data, output_file, ensure_ascii=False, indent=4)
+
+
+@click.command()
+@click.option(
+    '--input-file', default=sys.stdin, type=click.File(mode='rt'),
+    help='Input JSON file'
+)
+@click.option(
+    '--output-file', default=sys.stdout, type=click.File(mode='wt'),
+    help='Output list JSON file'
+)
+@click.option(
+    '--output-directory', default='data1/pages',
+    type=click.Path(exists=True, dir_okay=True, file_okay=False),
+    help='Output list JSON file'
+)
+@click.option(
+    '--bot-name', default='NewsBot', type=click.STRING
+)
+def generate_wiki_pages(
+    input_file: TextIO, output_file: TextIO, output_directory: str,
+    bot_name: str
+) -> None:
+    """Generate wiki-pages for news articles."""
+    data = json.load(input_file)
+
+    output_directory_path = pathlib.Path(output_directory)
+
+    pages: Dict[str, str] = {}
+
+    items: List[NewsItem] = list(get_news_items(data))
+    with click.progressbar(items) as bar:
+        for item in bar:
+            page_file_path = output_directory_path.joinpath(f'{item.name}.txt')
+            with open(page_file_path, mode='wt') as page_file:
+                page_file.write(item.get_wiki_page_text(bot_name))
+            pages[item.title] = str(page_file_path)
+
+    json.dump(pages, output_file, ensure_ascii=False, indent=4)
+
+
 cli.add_command(process_categories)
 cli.add_command(fetch_news)
 cli.add_command(filter_fetched_news)
+cli.add_command(fetch_news_pages)
+cli.add_command(generate_wiki_pages)
 
 
 if __name__ == '__main__':

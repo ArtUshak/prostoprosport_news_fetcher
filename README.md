@@ -83,7 +83,7 @@ Fetch news for page range and write data to JSON file. Pages are numbered from m
 
 * `--first-page INTEGER` — number of first page to load, should not be less than 1
 * `--last-page INTEGER` — number of last page to load, should not be less than 1. If it is less than first page number, no data will be fetched
-* `--categories-file` — file to read categories URL from (this file can be generated using `process-categories` command), default is `data1/categories_data.json`
+* `--categories-file` — file to read categories URL from (this file can be generated using `process-categories` command), default is no categories file, use `/post/` URL path for all news
 * `--output-file` — output JSON file
 * `--check-url` / `--no-check-url` — check URLs using HEAD requests
 * `--api-method [main-news|news]` — API method to use: `main_news` or `news`, default is `main_news`
@@ -97,7 +97,7 @@ JSON array of news items. Each news item is dictionary with following fields:
 * `category_slug` — category slug (text ID)
 * `category_id` — category numberic ID
 * `date` — date and time in ISO format
-* `url` — news item URL or `null` URL can not be determined by script
+* `url` — news item URL or `null` if URL can not be determined by script
 * `url_ok` — only if `--check-url` flag was set: boolean value — `true` if HEAD request was successful, `false` if it was unsuccessful (for example, 404)
 
 #### Example 1
@@ -259,4 +259,5 @@ python news_fetcher/prostoprosport_news_fetcher.py filter-fetched-news --input-f
 
 ## Notes
 
-* Prostoprosport.ru API does not provide URLs, only category slugs and IDs, category-to-URL mappings are grabbed from JavaScript on website. Therefore URLs are not guaranteed to be correct. You can use `--check-url` flag to check whether those URLs actually exist on website.
+* (**OBSOLETE**) Prostoprosport.ru API does not provide URLs, only category slugs and IDs, category-to-URL mappings are grabbed from JavaScript on website. Therefore URLs are not guaranteed to be correct. You can use `--check-url` flag to check whether those URLs actually exist on website.
+* Now all news are placed under `/post/` URL path, without category URL.
