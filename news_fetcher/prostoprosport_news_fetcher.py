@@ -10,65 +10,14 @@ import bs4
 import click
 import requests
 
-from utils import html_to_wikitext
+from utils import (check_bool, check_dict_str_str, check_int, check_list_str,
+                   check_optional_str, check_str, html_to_wikitext)
 
 PROSTOPROSPORT_API_NEWS_URL = 'https://api.prostoprosport.ru/api/news/'
 PROSTOPROSPORT_API_MAIN_NEWS_URL = (
     'https://api.prostoprosport.ru/api/main_news/'
 )
 PROSTOPROSPORT_WEBSITE_URL = 'https://prostoprosport.ru'
-
-
-def check_str(data: Any) -> str:
-    """Check if data is `str` and return it."""
-    if not isinstance(data, str):
-        raise TypeError(data)
-    return data
-
-
-def check_int(data: Any) -> int:
-    """Check if data is `int` and return it."""
-    if not isinstance(data, int):
-        raise TypeError(data)
-    return data
-
-
-def check_optional_str(data: Any) -> Optional[str]:
-    """Check if data is `Optional[str]` and return it."""
-    if data is None:
-        return None
-    if not isinstance(data, str):
-        raise TypeError(data)
-    return data
-
-
-def check_bool(data: Any) -> bool:
-    """Check if data is `bool` and return it."""
-    if not isinstance(data, bool):
-        raise TypeError(data)
-    return data
-
-
-def check_dict_str_str(data: Any) -> Dict[str, str]:
-    """Check if data is `Dict[str, str]` and return it."""
-    if not isinstance(data, dict):
-        raise TypeError(data)
-    for key, value in data.items():
-        if not isinstance(key, str):
-            raise TypeError(key)
-        if not isinstance(value, str):
-            raise TypeError(value)
-    return data
-
-
-def check_list_str(data: Any) -> List[str]:
-    """Check if data is `List[str]` and return it."""
-    if not isinstance(data, list):
-        raise TypeError(data)
-    for value in data:
-        if not isinstance(value, str):
-            raise TypeError(value)
-    return data
 
 
 def get_categories(data: Any) -> Tuple[Dict[int, str], Dict[str, str]]:
@@ -102,6 +51,7 @@ class NewsItem:
     category_title: Optional[str]
     date: datetime.datetime
     tag_titles: List[str]
+    author_name: Optional[str]
     url: Optional[str]
     url_ok: Optional[bool] = None
     wikitext_paragraphs: Optional[List[str]] = None
@@ -116,8 +66,7 @@ class NewsItem:
         """Create news item data."""
         result = NewsItem(
             name, title, category_id, category_slug, category_title,
-            date, tag_titles,
-            None, None, None
+            date, tag_titles, None, None, None, None
         )
         result.get_page_url(categories_by_id, categories_by_slug)
         return result
@@ -167,11 +116,14 @@ class NewsItem:
             self.url_ok = None
         return self.url_ok
 
-    def fetch_article_paragraphs(self, session: requests.Session) -> List[str]:
+    def fetch_article(
+        self, session: requests.Session
+    ) -> Tuple[Optional[str], List[str]]:
         """
         Fetch article text.
 
-        Return it as list of wiki-text paragraphs and save it.
+        Return tuple of text as list of wiki-text paragraphs and author name,
+        save it.
         """
         if self.url is None:
             raise ValueError()
@@ -179,13 +131,18 @@ class NewsItem:
         if r.status_code != 200:
             raise ValueError()
         parser = bs4.BeautifulSoup(markup=r.text, features='html.parser')
-        paragraphs = parser.select('.page-content > article > p')
+        author_tags = parser.select('.author > form > button')
+        author_name: Optional[str] = None
+        if len(author_tags) >= 1:
+            author_name = author_tags[0].text
+        paragraph_tags = parser.select('.page-content > article > p')
         wikitext_paragraphs: List[str] = []
-        for paragraph in paragraphs:
-            wikitext = html_to_wikitext(paragraph)
+        for paragraph_tag in paragraph_tags:
+            wikitext = html_to_wikitext(paragraph_tag)
             wikitext_paragraphs.append(wikitext)
+        self.author_name = author_name
         self.wikitext_paragraphs = wikitext_paragraphs
-        return self.wikitext_paragraphs
+        return self.author_name, self.wikitext_paragraphs
 
     def get_wiki_page_text(self, bot_name: str) -> str:
         """Get wiki-page text for article from wiki-text paragraphs."""
@@ -204,8 +161,12 @@ class NewsItem:
         wikitext_elements += self.wikitext_paragraphs
         wikitext_elements.append('{{-}}')
         wikitext_elements.append('== Источники ==')
+        template_parameters = [f'url={self.url}', f'title={self.title}']
+        if self.author_name is not None:
+            template_parameters.append(f'author={self.author_name}')
+        template_parameters_str = '|'.join(template_parameters)
         wikitext_elements.append(
-            f'{{{{Prostoprosport.ru|url={self.url}|title={self.title}}}}}'
+            f'{{{{Prostoprosport.ru|{template_parameters_str}}}}}'
         )
         wikitext_elements.append(
             f'{{{{Загружено ботом в архив|{bot_name}|Prostoprosport.ru}}}}'
@@ -228,6 +189,8 @@ class NewsItem:
             'url': self.url,
             'tag_titles': self.tag_titles
         }
+        if self.author_name is not None:
+            data['author_name'] = self.author_name
         if self.url_ok is not None:
             data['url_ok'] = self.url_ok
         if self.wikitext_paragraphs is not None:
@@ -247,7 +210,7 @@ class NewsItem:
         category_id = check_int(data['category_id'])
         category_title: Optional[str] = None
         if 'category_title' in data:
-            category_title = data['category_title']
+            category_title = check_str(data['category_title'])
         date_str = check_str(data['date'])
         date = datetime.datetime.fromisoformat(date_str)
         url = check_optional_str(data['url'])
@@ -259,10 +222,13 @@ class NewsItem:
             wikitext_paragraphs = check_list_str(data['wikitext_paragraphs'])
         tag_titles: List[str] = []
         if 'tag_titles' in data:
-            tag_titles = data['tag_titles']
+            tag_titles = check_list_str(data['tag_titles'])
+        author_name: Optional[str] = None
+        if 'author_name' in data:
+            author_name = check_str(data['author_name'])
         return NewsItem(
             name, title, category_id, category_slug, category_title, date,
-            tag_titles, url, url_ok, wikitext_paragraphs
+            tag_titles, author_name, url, url_ok, wikitext_paragraphs
         )
 
 
@@ -520,7 +486,7 @@ def fetch_news_pages(
     items: List[NewsItem] = list(get_news_items(data))
     with click.progressbar(items) as bar:
         for item in bar:
-            item.fetch_article_paragraphs(session)
+            item.fetch_article(session)
 
     items_data = list(map(lambda item: item.to_json_dict(), items))
     json.dump(items_data, output_file, ensure_ascii=False, indent=4)
