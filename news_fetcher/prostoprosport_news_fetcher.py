@@ -118,7 +118,7 @@ class NewsItem:
 
     def fetch_article(
         self, session: requests.Session
-    ) -> Tuple[Optional[str], List[str]]:
+    ) -> None:
         """
         Fetch article text.
 
@@ -127,9 +127,14 @@ class NewsItem:
         """
         if self.url is None:
             raise ValueError()
+        if not self.url_ok:
+            return
         r = session.get(self.url)
+        if r.status_code == 404:
+            self.url_ok = False
+            return
         if r.status_code != 200:
-            raise ValueError()
+            raise ValueError(r.status_code)
         parser = bs4.BeautifulSoup(markup=r.text, features='html.parser')
         author_tags = parser.select('.author > form > button')
         author_name: Optional[str] = None
@@ -142,12 +147,11 @@ class NewsItem:
             wikitext_paragraphs.append(wikitext)
         self.author_name = author_name
         self.wikitext_paragraphs = wikitext_paragraphs
-        return self.author_name, self.wikitext_paragraphs
 
-    def get_wiki_page_text(self, bot_name: str) -> str:
+    def get_wiki_page_text(self, bot_name: str) -> Optional[str]:
         """Get wiki-page text for article from wiki-text paragraphs."""
         if self.wikitext_paragraphs is None:
-            raise ValueError()
+            return None
         wikitext_elements: List[str] = []
         date_str = self.date.strftime('%Y-%m-%d')
         tag_titles_list: List[str]
@@ -524,9 +528,11 @@ def generate_wiki_pages(
     with click.progressbar(items) as bar:
         for item in bar:
             page_file_path = output_directory_path.joinpath(f'{item.name}.txt')
-            with open(page_file_path, mode='wt') as page_file:
-                page_file.write(item.get_wiki_page_text(bot_name))
-            pages[item.title] = str(page_file_path)
+            wiki_page_text = item.get_wiki_page_text(bot_name)
+            if wiki_page_text is not None:
+                with open(page_file_path, mode='wt') as page_file:
+                    page_file.write(wiki_page_text)
+                pages[item.title] = str(page_file_path)
 
     json.dump(pages, output_file, ensure_ascii=False, indent=4)
 
