@@ -261,3 +261,35 @@ python news_fetcher/prostoprosport_news_fetcher.py filter-fetched-news --input-f
 
 * (**OBSOLETE**) Prostoprosport.ru API does not provide URLs, only category slugs and IDs, category-to-URL mappings are grabbed from JavaScript on website. Therefore URLs are not guaranteed to be correct. You can use `--check-url` flag to check whether those URLs actually exist on website.
 * Now all news are placed under `/post/` URL path, without category URL.
+
+### Command `fetch-news-pages`
+
+Fetch news pages contents.
+
+#### Options
+
+* `--input-file FILE` — JSON file with page list (fetched by `fetch-pages`)
+* `--output-file FILE` — output JSON file with pages and their contents
+
+#### Example
+
+```sh
+python news_fetcher/prostoprosport_news_fetcher.py fetch-news-pages --input-file output1_100.json --output-file output1_100_pages.json
+```
+
+### Command `generate-wiki-pages`
+
+Generate MediaWiki pages as text files for fetched news.
+
+#### Options
+
+* `--input-file FILE` — JSON file with pages and their contents (fetched by `fetch-news-pages`)
+* `--output-file FILE` — output JSON file with list of generated pages, it contains dictionary, where keys are page titles, and values are page file paths
+* `--output-directory FILE` — directory to place generated MediaWiki page files
+* `--bot-name STRING` — name of bot user account to use in page template
+
+#### Example
+
+```sh
+python news_fetcher/prostoprosport_news_fetcher.py generate-wiki-pages --input-file output1_100_pages.json --output-file 
+```
