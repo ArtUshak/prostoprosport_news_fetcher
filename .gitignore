@@ -98,3 +98,6 @@ ENV/
 
 # Generated data
 data1
+
+# VS Code data
+.vscode
