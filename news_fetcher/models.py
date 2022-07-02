@@ -12,10 +12,23 @@ class Source(Model):
 
 class Tag(Model):
     tag_id = fields.IntField(pk=True)
-    title = fields.CharField(max_length=126)  # TODO
+    title = fields.CharField(max_length=126, unique=True)  # TODO
 
     def __str__(self) -> str:
         return f'#{self.tag_id} {self.title}'
+
+
+class ArticleTag(Model):
+    tag: 'fields.relational.ForeignKeyRelation[Tag]' = (
+        fields.ForeignKeyField('models.Tag')
+    )
+    article: 'fields.relational.ForeignKeyRelation[Article]' = (
+        fields.ForeignKeyField('models.Article')
+    )
+
+    class Meta:
+        unique_together = ('tag', 'article')
+        table = 'article_m2m_tag'
 
 
 class Article(Model):
@@ -35,7 +48,9 @@ class Article(Model):
     wikitext_paragraphs = fields.JSONField(null=True)
     misc_data = fields.JSONField()
     tags: 'fields.relational.ManyToManyRelation[Tag]' = (
-        fields.ManyToManyField('models.Tag', related_name='articles')
+        fields.ManyToManyField(
+            'models.Tag', related_name='articles', through='article_m2m_tag'
+        )
     )
 
     target_upload_name = fields.CharField(max_length=255, null=True)

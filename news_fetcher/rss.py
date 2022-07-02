@@ -1,16 +1,17 @@
 import json
 import urllib.parse
 from io import BytesIO
-from typing import Dict, Iterable, List, Optional, Set, TextIO
+from typing import Dict, Iterable, List, Optional, Set, TextIO, Tuple
 
 import aiohttp
 import bs4
 import feedparser
+from wikitext import html_to_wikitext
 
 import models
 from module import SourceModule
 from utils import (check_dict_str_object, check_list_str, check_str,
-                   html_to_wikitext, struct_time_to_datetime)
+                   struct_time_to_datetime)
 
 
 def entry_to_json_dict(
@@ -57,21 +58,27 @@ class RSSModule(SourceModule):
 
     async def fetch_news(
         self, session: aiohttp.ClientSession, page: int, source: models.Source
-    ) -> Iterable[models.Article]:
+    ) -> Tuple[Iterable[models.Article], Dict[str, Set[str]]]:
         # TODO: page is ignored: maybe should warn about it
         articles: List[models.Article] = []
+        tag_titles_by_slug_name: Dict[str, Set[str]] = {}
 
         async with session.get(self.rss_url) as response:
             text = await response.read()
             parsed_feed = feedparser.parse(BytesIO(text))
             for element in parsed_feed.entries:
+                slug_name = element.link
                 author_name: Optional[str] = None
                 if 'author' in element:
                     author_name = element.author
-                # TODO: write tags
+                if 'tags' in element:
+                    tag_titles_by_slug_name[slug_name] = set(filter(
+                        bool,
+                        map(lambda tag_data: tag_data.term, element.tags)
+                    ))
                 articles.append(models.Article(
                     source=source,
-                    slug_name=element.link,  # TODO
+                    slug_name=slug_name,  # TODO
                     title=element.title,
                     source_url=element.link,
                     date=struct_time_to_datetime(element.published_parsed),
@@ -79,7 +86,7 @@ class RSSModule(SourceModule):
                     misc_data=entry_to_json_dict(element)  # TODO
                 ))
 
-        return articles
+        return articles, tag_titles_by_slug_name
 
     def handle_link(
         self, base_url: urllib.parse.ParseResult, href: str

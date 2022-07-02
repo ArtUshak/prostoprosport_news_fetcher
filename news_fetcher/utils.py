@@ -1,9 +1,7 @@
 """Utilitary functions."""
 import datetime
 import time
-from typing import Callable, Dict, List, Optional
-
-import bs4
+from typing import Dict, List, Optional
 
 
 def check_str(data: object) -> str:
@@ -24,9 +22,7 @@ def check_optional_str(data: object) -> Optional[str]:
     """Check if data is `Optional[str]` and return it."""
     if data is None:
         return None
-    if not isinstance(data, str):
-        raise TypeError(data)
-    return data
+    return check_str(data)
 
 
 def check_bool(data: object) -> bool:
@@ -48,10 +44,8 @@ def check_dict_str_str(data: object) -> Dict[str, str]:
     if not isinstance(data, dict):
         raise TypeError(data)
     for key, value in data.items():
-        if not isinstance(key, str):
-            raise TypeError(key)
-        if not isinstance(value, str):
-            raise TypeError(value)
+        check_str(key)
+        check_str(value)
     return data
 
 
@@ -60,38 +54,17 @@ def check_list_str(data: object) -> List[str]:
     if not isinstance(data, list):
         raise TypeError(data)
     for value in data:
-        if not isinstance(value, str):
-            raise TypeError(value)
+        check_str(value)
     return data
 
 
-def html_to_wikitext(
-    element: bs4.element.PageElement, link_handler: Callable[[str], str]
-) -> str:
-    """Convert HTML element to wiki-text recursively."""
-    if isinstance(element, bs4.element.NavigableString):
-        return str(element.string)
-    if isinstance(element, bs4.element.Tag):
-        content_str = ''.join(list(map(
-            lambda e: html_to_wikitext(e, link_handler), element.children
-        )))
-        if element.name == 'a':
-            href = element.attrs['href']
-            try:
-                url = link_handler(href)
-            except ValueError:
-                return content_str
-            return f'[{url} {content_str}]'
-        elif element.name in ('a', 'strong'):
-            return f"'''{content_str}'''"
-        elif element.name == 'br':
-            return '<br />'
-        elif element.name in ('script', 'img'):
-            return ''
-        else:
-            return content_str
-    else:
-        raise TypeError(element)
+def check_list_dict_str_object(data: object) -> List[Dict[str, object]]:
+    """Check if data is `List[str]` and return it."""
+    if not isinstance(data, list):
+        raise TypeError(data)
+    for value in data:
+        check_dict_str_object(value)
+    return data
 
 
 def struct_time_to_datetime(value: time.struct_time) -> datetime.datetime:

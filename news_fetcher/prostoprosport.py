@@ -2,17 +2,18 @@
 import dataclasses
 import datetime
 import json
-from typing import Any, Dict, Iterable, List, Optional, TextIO, Tuple, Union
+import urllib
+from typing import Dict, Iterable, List, Optional, Set, TextIO, Tuple, Union
 
 import aiohttp
 import bs4
 import click
-import urllib
+from wikitext import html_to_wikitext
 
 import models
 from module import SourceModule
-from utils import (check_dict_str_str, check_int, check_list_str, check_str,
-                   html_to_wikitext)
+from utils import (check_dict_str_str, check_int, check_list_dict_str_object,
+                   check_list_str, check_str)
 
 PROSTOPROSPORT_API_NEWS_URL = 'https://api.prostoprosport.ru/api/news/'
 PROSTOPROSPORT_API_MAIN_NEWS_URL = (
@@ -21,17 +22,18 @@ PROSTOPROSPORT_API_MAIN_NEWS_URL = (
 PROSTOPROSPORT_WEBSITE_URL = 'https://prostoprosport.ru'
 
 
-def load_category_urls(elements: List[Dict[str, Any]]) -> Iterable[str]:
+def load_category_urls(elements: List[Dict[str, object]]) -> Iterable[str]:
     """Load category URLs from dictionary recursively and iterate over them."""
     for element in elements:
         if 'url' in element:
-            yield element['url']
+            yield check_str(element['url'])
         if 'child' in element:
-            for url in load_category_urls(element['child']):
+            child = check_list_dict_str_object(element['child'])
+            for url in load_category_urls(child):
                 yield url
 
 
-def get_categories(data: Any) -> Tuple[Dict[int, str], Dict[str, str]]:
+def get_categories(data: object) -> Tuple[Dict[int, str], Dict[str, str]]:
     """Get categories_by_slug dictionary from data loaded from JSON."""
     if not isinstance(data, dict):
         raise TypeError(data)
@@ -69,7 +71,7 @@ class ProstoprosportMiscData:
 
     @staticmethod
     def from_json_dict(
-        data: Any
+        data: object
     ) -> 'ProstoprosportMiscData':
         """Create news item from dictionary loaded from JSON."""
         if not isinstance(data, dict):
@@ -134,17 +136,15 @@ class ProstoprosportModule(SourceModule):
 
     async def fetch_news(
         self, session: aiohttp.ClientSession, page: int, source: models.Source
-    ) -> Iterable[models.Article]:
-        """
-        Fetch news items using API, create `Article` objects
-        without inserting into database and iterate over them.
-        """
+    ) -> Tuple[Iterable[models.Article], Dict[str, Set[str]]]:
         params = {
             'offset': 1,
             'page': page
         }
         async with session.get(self.api_url, params=params) as response:
             data = await response.json()
+
+        tag_titles_by_slug_name: Dict[str, Set[str]] = {}
 
         articles: List[models.Article] = []
         for element in data:
@@ -161,6 +161,7 @@ class ProstoprosportModule(SourceModule):
             if not isinstance(tags_str, str):
                 raise ValueError()
             date = datetime.datetime.fromisoformat(date_str)
+
             tags = json.loads('[' + tags_str + ']')
             category_id: Optional[int] = None
             category_slug: Optional[str] = None
@@ -173,7 +174,11 @@ class ProstoprosportModule(SourceModule):
                     category_title = tag['category']['name']
                 elif 'post_tag' in tag:
                     tag_titles.append(tag['post_tag']['name'])
-            # TODO: write tags
+            if len(tag_titles_by_slug_name) != 0:
+                tag_titles_by_slug_name[name_str] = set(filter(
+                    bool, tag_titles
+                ))
+
             if category_id is None:
                 raise ValueError()
             if category_slug is None:
@@ -193,14 +198,11 @@ class ProstoprosportModule(SourceModule):
                 )
             ))
 
-        return articles
+        return articles, tag_titles_by_slug_name
 
     async def fetch_article(
         self, article: models.Article, session: aiohttp.ClientSession
     ) -> None:
-        """
-        Fetch article text and save it in database.
-        """
         if not article.source_url_ok:
             return  # TODO
 
@@ -236,7 +238,6 @@ class ProstoprosportModule(SourceModule):
     async def get_wiki_page_text(
         self, article: models.Article, bot_name: str
     ) -> Optional[str]:
-        """Get wiki-page text for article from wiki-text paragraphs."""
         if article.wikitext_paragraphs is None:
             return None
         try:
