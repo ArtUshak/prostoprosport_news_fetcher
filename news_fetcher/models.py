@@ -53,7 +53,7 @@ class Article(Model):
         )
     )
 
-    target_upload_name = fields.CharField(max_length=255, null=True)
+    uploaded = fields.BooleanField(default=False)
 
     def __str__(self) -> str:
         return f'{self.source.slug_name}:{self.slug_name}'
