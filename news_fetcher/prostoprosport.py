@@ -8,12 +8,12 @@ from typing import Dict, Iterable, List, Optional, Set, TextIO, Tuple, Union
 import aiohttp
 import bs4
 import click
-from wikitext import html_to_wikitext
 
 import models
 from module import SourceModule
 from utils import (check_dict_str_str, check_int, check_list_dict_str_object,
                    check_list_str, check_str)
+from wikitext import html_to_wikitext
 
 PROSTOPROSPORT_API_NEWS_URL = 'https://api.prostoprosport.ru/api/news/'
 PROSTOPROSPORT_API_MAIN_NEWS_URL = (

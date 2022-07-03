@@ -56,8 +56,10 @@ class SourceModule(abc.ABC):
                 for tag_title in tag_titles:
                     article_tags.append(
                         models.ArticleTag(
-                            tag_id=tags_by_title[tag_title].pk,
-                            article_id=articles_by_slug_name[slug_name].pk
+                            tag_id=tags_by_title[tag_title].tag_id,
+                            article_id=articles_by_slug_name[
+                                slug_name
+                            ].article_id
                         )
                     )
             await models.ArticleTag.bulk_create(
