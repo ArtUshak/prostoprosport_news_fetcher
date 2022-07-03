@@ -23,7 +23,7 @@ def wrap_run(function):  # type: ignore
     async def wrapped(*args, **kwargs):  # type: ignore
         await init_db()
         try:
-            result = function(*args, **kwargs)
+            result = await function(*args, **kwargs)
         finally:
             await tortoise.connection.connections.close_all(discard=True)
         return result
