@@ -28,6 +28,8 @@ def wrap_run(function):  # type: ignore
             await tortoise.connection.connections.close_all(discard=True)
         return result
 
+    return wrapped
+
 
 def create_rss_module(
     data_file: Optional[TextIO], source_path: str,
