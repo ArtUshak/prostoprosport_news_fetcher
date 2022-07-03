@@ -56,7 +56,7 @@ poetry run python news_fetcher/news_fetcher.py --help
 
 ### Prostoprosport source module
 
-This modules fetches news [prostoprosport.ru](https://prostoprosport.ru) API.
+This modules fetches news using [prostoprosport.ru](https://prostoprosport.ru) API.
 
 * `news_fetcher/prostoprosport.py` is the source module.
 * `data/categories_from_js.json` is a category URL data grabbed from JS.
