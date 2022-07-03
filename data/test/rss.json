@@ -1,0 +1,5 @@
+{
+    "source_title": "Тест-новости",
+    "css_selector": ".article__block > .article__text",
+    "replaceable_netlocs": []
+}

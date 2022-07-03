@@ -6,12 +6,12 @@ from typing import Dict, Iterable, List, Optional, Set, TextIO, Tuple
 import aiohttp
 import bs4
 import feedparser
-from wikitext import html_to_wikitext
 
 import models
 from module import SourceModule
 from utils import (check_dict_str_object, check_list_str, check_str,
                    struct_time_to_datetime)
+from wikitext import html_to_wikitext
 
 
 def entry_to_json_dict(

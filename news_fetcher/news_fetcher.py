@@ -19,6 +19,16 @@ from rss import RSSModule
 from utils import check_dict_str_object
 
 
+def wrap_run(function):  # type: ignore
+    async def wrapped(*args, **kwargs):  # type: ignore
+        await init_db()
+        try:
+            result = function(*args, **kwargs)
+        finally:
+            await tortoise.connection.connections.close_all(discard=True)
+        return result
+
+
 def create_rss_module(
     data_file: Optional[TextIO], source_path: str,
     source_name: Optional[str]
@@ -81,8 +91,6 @@ def cli(
 async def fetch_news_async(
     module: SourceModule, first_page: int, last_page: int
 ) -> None:
-    await init_db()
-
     source, _ = await models.Source.get_or_create(
         slug_name=module.source_slug_name
     )
@@ -119,16 +127,14 @@ def fetch_news(
     """
     module = ctx.obj['MODULE']
 
-    tortoise.run_async(
-        fetch_news_async(
+    asyncio.run(
+        wrap_run(fetch_news_async)(
             module, first_page, last_page
         )
     )
 
 
 async def fetch_news_pages_async(module: ProstoprosportModule) -> None:
-    await init_db()
-
     source, _ = await models.Source.get_or_create(
         slug_name=module.source_slug_name
     )
@@ -155,15 +161,13 @@ def fetch_news_pages(
     """Fetch articles for news."""
     module = ctx.obj['MODULE']
 
-    tortoise.run_async(fetch_news_pages_async(module))
+    asyncio.run(wrap_run(fetch_news_pages_async)(module))
 
 
 async def generate_wiki_pages_async(
     module: ProstoprosportModule, bot_name: str,
     output_directory_path: pathlib.Path
 ) -> Dict[str, Tuple[pathlib.Path, str, str]]:
-    await init_db()
-
     source, _ = await models.Source.get_or_create(
         slug_name=module.source_slug_name
     )
@@ -210,11 +214,9 @@ def generate_wiki_pages(
     """Generate wiki-pages for news articles."""
     module = ctx.obj['MODULE']
 
-    pages = asyncio.run(generate_wiki_pages_async(
+    pages = asyncio.run(wrap_run(generate_wiki_pages_async)(
         module, bot_name, pathlib.Path(output_directory)
     ))
-
-    asyncio.run(tortoise.connection.connections.close_all(discard=True))
 
     pages_data: Dict[str, Dict[str, str]] = {}
     with click.progressbar(pages.items(), length=len(pages)) as bar:
@@ -233,8 +235,6 @@ def generate_wiki_pages(
 async def mark_uploaded_pages_async(
     module: ProstoprosportModule, slug_names: Iterable[str]
 ) -> None:
-    await init_db()
-
     source, _ = await models.Source.get_or_create(
         slug_name=module.source_slug_name
     )
@@ -260,7 +260,7 @@ def mark_uploaded_pages(
 
     pages_data = check_dict_str_object(json.load(input_file))
 
-    tortoise.run_async(mark_uploaded_pages_async(
+    asyncio.run(wrap_run(mark_uploaded_pages_async)(
         module,
         pages_data.keys()
     ))
