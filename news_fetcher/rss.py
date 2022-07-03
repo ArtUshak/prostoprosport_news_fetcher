@@ -67,7 +67,7 @@ class RSSModule(SourceModule):
             text = await response.read()
             parsed_feed = feedparser.parse(BytesIO(text))
             for element in parsed_feed.entries:
-                slug_name = element.link
+                slug_name = element.link  # TODO
                 author_name: Optional[str] = None
                 if 'author' in element:
                     author_name = element.author
@@ -78,7 +78,7 @@ class RSSModule(SourceModule):
                     ))
                 articles.append(models.Article(
                     source=source,
-                    slug_name=slug_name,  # TODO
+                    slug_name=slug_name,
                     title=element.title,
                     source_url=element.link,
                     date=struct_time_to_datetime(element.published_parsed),

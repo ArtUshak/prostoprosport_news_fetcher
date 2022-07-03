@@ -10,6 +10,8 @@ Then you can just run `poetry run COMMAND` to run specific commands under python
 
 Or you can enter poetry shell (by running `poetry shell`) and then type script commands.
 
+You can also use `pip`.
+
 ### Installation example
 
 Assuming Python 3.8 or higher and poetry are installed.
@@ -48,7 +50,7 @@ poetry run python news_fetcher/news_fetcher.py --help
 
 ## Files
 
-* `run_all.sh` is the Shell script for running all steps. It requires that environment variables are set in `.env` file: `MEDIAWIKI_CREDENTIALS`, `DATABASE_URL`, `WIKI_TOOL_DIRECTORY`, `DATA_FILE`, `SOURCE_PATH`, `SOURCE_NAME`, `TARGET_API_URL`, `WIKI_PREFIX`.
+* `run_all.sh` is the Shell script for running all steps. It requires that environment variables are set in `.env` file: `MEDIAWIKI_CREDENTIALS`, `DATABASE_URL`, `WIKI_TOOL_DIRECTORY`, `DATA_FILE`, `SOURCE_PATH`, `SOURCE_NAME`, `TARGET_API_URL`, `WIKI_PREFIX`, `BOT_NAME`.
 * `news_fetcher/news_fetcher.py` is the script entry point.
 * `news_fetcher/db.py` is the DB initialization module.
 * `news_fetcher/models.py` is the module with DB models.
@@ -70,7 +72,34 @@ This modules fetches news using RSS.
 
 ## DB models
 
-**TODO**
+### `Source`
+
+Source website.
+
+* `slug_name` — string website ID (**primary key**), for example: `birmingham-post`.
+
+### `Tag`
+
+Tag for news articles.
+
+* `tag_id` — numerical ID (**primary key**).
+* `title` — tag text, for example: `Sport` (must be unique).
+
+### `Article`
+
+News article from source website.
+
+* `article_id` — numerical ID (**primary key**).
+* `source` — source website (**foreign key**).
+* `slug_name` — string identifier (must be unique per source website), for example: `sir-stanley-matthews-1915-2000-a-potteries-hero`.
+* `title` — human-readable article title, for example: **Sir Stanley Matthews 1915-2000: A Potteries hero; Stanley stayed loyal to his beloved**.
+* `date` — publication date, for example: **2020-02-24T00:00:00**.
+* `source_url` — full article URL, for example: [https://www.thefreelibrary.com/Sir+Stanley+Matthews+1915-2000%3A+A+Potteries+hero%3B+Stanley+stayed...-a060517953](https://www.thefreelibrary.com/Sir+Stanley+Matthews+1915-2000%3A+A+Potteries+hero%3B+Stanley+stayed...-a060517953).
+* `source_url_ok` — *true* if URL can be retrieved, *false* if it can not, *null* if it was not checked yet.
+* `author_name` — human-readable author name, may be *null*.
+* `wikitext_paragraphs` — article content converted into wiki-text stored as JSON list of paragraphs, may be *null* if not fetched yet.
+* `misc_data` — miscellaneous data stored as JSON, specific format and structure is module-dependent.
+* `tags` — article tags (**many-to-many relation** with `Tag` model through technical `ArticleTag` model with table named `article_m2m_tag`).
 
 ## Usage
 

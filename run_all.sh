@@ -10,7 +10,7 @@ trap 'rm -rf -- "$TMP_DIRECTORY"' EXIT
 poetry run python ./news_fetcher/news_fetcher.py --source-module rss --data-file "$DATA_FILE" --source-path "$SOURCE_PATH" --source-name "$SOURCE_NAME" fetch-news
 poetry run python ./news_fetcher/news_fetcher.py --source-module rss --data-file "$DATA_FILE" --source-path "$SOURCE_PATH" --source-name "$SOURCE_NAME" fetch-news-pages
 mkdir "$TMP_DIRECTORY/pages"
-poetry run python ./news_fetcher/news_fetcher.py --source-module rss --data-file "$DATA_FILE" --source-path "$SOURCE_PATH" --source-name "$SOURCE_NAME" generate-wiki-pages --output-file "$TMP_DIRECTORY/pages.json" --output-directory "$TMP_DIRECTORY/pages"
+poetry run python ./news_fetcher/news_fetcher.py --source-module rss --data-file "$DATA_FILE" --source-path "$SOURCE_PATH" --source-name "$SOURCE_NAME" generate-wiki-pages --output-file "$TMP_DIRECTORY/pages.json" --output-directory "$TMP_DIRECTORY/pages" --bot-name "$BOT_NAME"
 
 CURRENT_DIRECTORY="$(pwd)"
 

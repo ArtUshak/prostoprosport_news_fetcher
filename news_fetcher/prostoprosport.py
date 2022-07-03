@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Module to fetch news from ProstoProSport."""
 import dataclasses
 import datetime
