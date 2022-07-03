@@ -10,6 +10,8 @@ Then you can just run `poetry run COMMAND` to run specific commands under python
 
 Or you can enter poetry shell (by running `poetry shell`) and then type script commands.
 
+You can also use `pip`.
+
 ### Installation example
 
 Assuming Python 3.8 or higher and poetry are installed.
