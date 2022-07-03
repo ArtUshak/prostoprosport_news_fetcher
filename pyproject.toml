@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "prostoprosport_news_fetcher"
+name = "news_fetcher"
 version = "0.2.0"
 description = "Script to fetch news using API and convert to wiki-text"
 authors = ["Artiom Khandamirov <t9max@yandex.ru>"]
