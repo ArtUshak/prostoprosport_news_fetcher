@@ -119,7 +119,7 @@ News article from source website.
 ### RSS module options
 
 * `--data-file FILENAME` — JSON file with configuration, should contain folllowing keys:
-    * `paragraph_selector` — CSS selector for article paragraphs on web page
+    * `css_selector` — CSS selector for article paragraphs on web page
     * `source_title` — source title
     * `source_template_name` — template name for generated wiki-pages (optional, source title is used by default)
 * `--source-name` (required) — source slug name (identifier) for DB
