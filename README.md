@@ -50,7 +50,7 @@ poetry run python news_fetcher/news_fetcher.py --help
 
 ## Files
 
-* `run_all.sh` is the Shell script for running all steps. It requires that environment variables are set in `.env` file: `MEDIAWIKI_CREDENTIALS`, `DATABASE_URL`, `WIKI_TOOL_DIRECTORY`, `DATA_FILE`, `SOURCE_PATH`, `SOURCE_NAME`, `TARGET_API_URL`, `WIKI_PREFIX`, `BOT_NAME`.
+* `run_all.sh` is the Shell script for running all steps. It requires that environment variables are set in `.env` file: `MEDIAWIKI_CREDENTIALS`, `DATABASE_URL`, `WIKI_TOOL_DIRECTORY`, `DATA_FILE`, `SOURCE_PATH`, `SOURCE_NAME`, `TARGET_API_URL`, `WIKI_PREFIX`, `BOT_NAME`, `REQUESTS_INTERVAL`.
 * `news_fetcher/news_fetcher.py` is the script entry point.
 * `news_fetcher/db.py` is the DB initialization module.
 * `news_fetcher/models.py` is the module with DB models.
