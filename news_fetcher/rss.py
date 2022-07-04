@@ -9,8 +9,8 @@ import feedparser
 
 import models
 from module import SourceModule
-from utils import (check_dict_str_object, check_list_str, check_str,
-                   struct_time_to_datetime)
+from utils import (check_dict_str_object, check_list_str, check_optional_str,
+                   check_str, struct_time_to_datetime)
 from wikitext import html_to_wikitext
 
 
@@ -52,6 +52,10 @@ class RSSModule(SourceModule):
         config_data = check_dict_str_object(json.load(config_file))
         self.source_title = check_str(config_data.get('source_title'))
         self.css_selector = check_str(config_data.get('css_selector'))
+        self.source_template_name = (
+            check_optional_str(config_data.get('source_template_name'))
+            or self.source_title
+        )
         self.replaceable_netlocs = set(
             check_list_str(config_data.get('replaceable_netlocs'))
         )
@@ -169,7 +173,7 @@ class RSSModule(SourceModule):
         template_parameters_str = '|'.join(template_parameters)
 
         wikitext_elements.append(
-            f'{{{{Prostoprosport.ru|{template_parameters_str}}}}}'
+            f'{{{{{self.source_template_name}|{template_parameters_str}}}}}'
         )
         wikitext_elements.append(
             f'{{{{Загружено ботом в архив|{bot_name}|{self.source_title}}}}}'

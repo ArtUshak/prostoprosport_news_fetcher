@@ -16,7 +16,7 @@ CURRENT_DIRECTORY="$(pwd)"
 
 cd "$WIKI_TOOL_DIRECTORY"
 
-poetry run python ./wiki_tool_python/wikitool.py upload-pages "$TARGET_API_URL" "$TMP_DIRECTORY/pages" "$TMP_DIRECTORY/pages.json" --prefix "$WIKI_PREFIX" --dictionary --extended-dictionary --mode overwrite
+poetry run python ./wiki_tool_python/wikitool.py --requests-interval "$REQUESTS_INTERVAL" upload-pages "$TARGET_API_URL" "$TMP_DIRECTORY/pages" "$TMP_DIRECTORY/pages.json" --prefix "$WIKI_PREFIX" --dictionary --extended-dictionary --mode overwrite
 
 cd "$CURRENT_DIRECTORY"
 
