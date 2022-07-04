@@ -9,8 +9,8 @@ import feedparser
 
 import models
 from module import SourceModule
-from utils import (check_dict_str_object, check_list_str, check_str,
-                   check_optional_str, struct_time_to_datetime)
+from utils import (check_dict_str_object, check_list_str, check_optional_str,
+                   check_str, struct_time_to_datetime)
 from wikitext import html_to_wikitext
 
 
