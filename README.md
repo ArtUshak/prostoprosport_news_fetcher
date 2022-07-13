@@ -122,6 +122,9 @@ News article from source website.
     * `css_selector` — CSS selector for article paragraphs on web page
     * `source_title` — source title
     * `source_template_name` — template name for generated wiki-pages (optional, source title is used by default)
+    * `removed_last_lines` — count of paragraphs at the end of article that should be skipped (optional, 0 by default)
+    * `disable_bold_font` — *true* to avoid bold font in generated page (optional, *false* by default)
+    * `extra_first_lines` — array of strings to add at the beginning of generated page (optional, empty by default)
 * `--source-name` (required) — source slug name (identifier) for DB
 * `--source-path TEXT` (required) — RSS feed URL
 
