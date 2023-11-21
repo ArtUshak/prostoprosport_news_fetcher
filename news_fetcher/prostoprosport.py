@@ -268,7 +268,6 @@ class ProstoprosportModule(SourceModule):
         wikitext_elements: List[str] = []
 
         wikitext_elements.append(f'{{{{дата|{date_str}}}}}')
-        wikitext_elements.append(f'{{{{тема|{tag_titles_str}}}}}')
         wikitext_elements += wikitext_paragraphs
         wikitext_elements.append('{{-}}')
         wikitext_elements.append('== Источники ==')
@@ -284,7 +283,7 @@ class ProstoprosportModule(SourceModule):
             f'{{{{Prostoprosport.ru|{template_parameters_str}}}}}'
         )
         wikitext_elements.append(
-            f'{{{{Загружено ботом в архив|{bot_name}|Prostoprosport.ru}}}}'
+            f'{{{{Загружено ботом|{bot_name}|Prostoprosport.ru}}}}'
         )
         wikitext_elements.append('{{Подвал новости}}')
         wikitext_elements.append(f'{{{{Категории|{tag_titles_str}}}}}')

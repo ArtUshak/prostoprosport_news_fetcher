@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Script to fetch news using API or RSS and convert them to wiki-text."""
 import asyncio
 import json

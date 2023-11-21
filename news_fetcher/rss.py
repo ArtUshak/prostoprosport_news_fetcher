@@ -1,7 +1,8 @@
 import json
 import urllib.parse
 from io import BytesIO
-from typing import Dict, Iterable, List, Optional, Set, TextIO, Tuple
+from typing import (Dict, FrozenSet, Iterable, List, Optional, Set, TextIO,
+                    Tuple)
 
 import aiohttp
 import bs4
@@ -9,7 +10,8 @@ import feedparser
 
 import models
 from module import SourceModule
-from utils import (check_dict_str_object, check_list_str, check_str,
+from utils import (check_bool, check_dict_str_object, check_int,
+                   check_list_str, check_optional_str, check_str,
                    struct_time_to_datetime)
 from wikitext import html_to_wikitext
 
@@ -39,10 +41,13 @@ def entry_to_json_dict(
 
 class RSSModule(SourceModule):
     rss_url: str
-    paragraph_selector: str
     source_title: str
     css_selector: str
-    replaceable_netlocs: Set[str]
+    replaceable_netlocs: FrozenSet[str]
+    default_categories: FrozenSet[str]
+    removed_last_lines: int
+    disable_bold_font: bool
+    extra_first_lines: List[str]
 
     def __init__(
         self, config_file: TextIO, rss_url: str, source_slug_name: str
@@ -52,9 +57,37 @@ class RSSModule(SourceModule):
         config_data = check_dict_str_object(json.load(config_file))
         self.source_title = check_str(config_data.get('source_title'))
         self.css_selector = check_str(config_data.get('css_selector'))
-        self.replaceable_netlocs = set(
+        self.source_template_name = (
+            check_optional_str(config_data.get('source_template_name'))
+            or self.source_title
+        )
+        self.replaceable_netlocs = frozenset(
             check_list_str(config_data.get('replaceable_netlocs'))
         )
+        if 'default_categories' in config_data:
+            self.default_categories = frozenset(check_list_str(
+                config_data['default_categories']
+            ))
+        else:
+            self.default_categories = frozenset()
+        if 'removed_last_lines' in config_data:
+            self.removed_last_lines = check_int(
+                config_data['removed_last_lines']
+            )
+        else:
+            self.removed_last_lines = 0
+        if 'disable_bold_font' in config_data:
+            self.disable_bold_font = check_bool(
+                config_data['disable_bold_font']
+            )
+        else:
+            self.disable_bold_font = False
+        if 'extra_first_lines' in config_data:
+            self.extra_first_lines = check_list_str(
+                config_data['extra_first_lines']
+            )
+        else:
+            self.extra_first_lines = []
 
     async def fetch_news(
         self, session: aiohttp.ClientSession, page: int, source: models.Source
@@ -67,18 +100,22 @@ class RSSModule(SourceModule):
             text = await response.read()
             parsed_feed = feedparser.parse(BytesIO(text))
             for element in parsed_feed.entries:
-                slug_name = element.link
+                slug_name = element.link  # TODO
                 author_name: Optional[str] = None
                 if 'author' in element:
                     author_name = element.author
+                tag_titles = set(self.default_categories)
                 if 'tags' in element:
-                    tag_titles_by_slug_name[slug_name] = set(filter(
-                        bool,
-                        map(lambda tag_data: tag_data.term, element.tags)
-                    ))
+                    tag_titles = tag_titles.union(
+                        set(filter(
+                            bool,
+                            map(lambda tag_data: tag_data.term, element.tags)
+                        ))
+                    )
+                tag_titles_by_slug_name[slug_name] = tag_titles
                 articles.append(models.Article(
                     source=source,
-                    slug_name=slug_name,  # TODO
+                    slug_name=slug_name,
                     title=element.title,
                     source_url=element.link,
                     date=struct_time_to_datetime(element.published_parsed),
@@ -129,7 +166,8 @@ class RSSModule(SourceModule):
 
         for paragraph_tag in paragraph_tags:
             wikitext = html_to_wikitext(
-                paragraph_tag, lambda href: self.handle_link(base_url, href)
+                paragraph_tag, lambda href: self.handle_link(base_url, href),
+                disable_bold_font=self.disable_bold_font
             )
             wikitext_paragraphs.append(wikitext)
 
@@ -147,6 +185,11 @@ class RSSModule(SourceModule):
         except TypeError:
             return None  # TODO
 
+        if self.removed_last_lines > 0:
+            wikitext_paragraphs = wikitext_paragraphs[
+                :-self.removed_last_lines
+            ]
+
         date_str = article.date.strftime('%Y-%m-%d')
 
         tag_titles = sorted(map(
@@ -155,8 +198,9 @@ class RSSModule(SourceModule):
         tag_titles_str = '|'.join(tag_titles)
         wikitext_elements: List[str] = []
 
+        wikitext_elements.extend(self.extra_first_lines)
+
         wikitext_elements.append(f'{{{{дата|{date_str}}}}}')
-        wikitext_elements.append(f'{{{{тема|{tag_titles_str}}}}}')
         wikitext_elements += wikitext_paragraphs
         wikitext_elements.append('{{-}}')
         wikitext_elements.append('== Источники ==')
@@ -169,10 +213,10 @@ class RSSModule(SourceModule):
         template_parameters_str = '|'.join(template_parameters)
 
         wikitext_elements.append(
-            f'{{{{Prostoprosport.ru|{template_parameters_str}}}}}'
+            f'{{{{{self.source_template_name}|{template_parameters_str}}}}}'
         )
         wikitext_elements.append(
-            f'{{{{Загружено ботом в архив|{bot_name}|{self.source_title}}}}}'
+            f'{{{{Загружено ботом|{bot_name}|{self.source_title}}}}}'
         )
         wikitext_elements.append('{{Подвал новости}}')
         wikitext_elements.append(f'{{{{Категории|{tag_titles_str}}}}}')
