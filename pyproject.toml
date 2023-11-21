@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "news_fetcher"
-version = "0.2.0"
+version = "0.3.0"
 description = "Script to fetch news using API and convert to wiki-text"
 authors = ["Artiom Khandamirov <t9max@yandex.ru>"]
 license = "MIT"
