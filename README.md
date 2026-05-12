@@ -1,5 +1,7 @@
 # news_fetcher
 
+**Note**: project is archived and umaintained.
+
 Script to fetch news URLs from news websites to database using API.
 
 ## Installation
